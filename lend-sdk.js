@@ -72,7 +72,7 @@ const MAX_MULTI_SIZE = 20;
 // //             .plus(market.total_borrows)
 // //             .minus(market.reserves))
 // //         }
-        
+
 
 // //         return market;
 // //     }
@@ -204,6 +204,17 @@ class LendSdk {
         //     let accountToken = account[index];
         //     accountToken.market = markets[accountToken.token_address];
         // }
+        for (const key in markets) {
+            let market = markets[key];
+            if (new BigNumber(market.cash).plus(market.total_borrows).minus(market.reserves).gt(0)) {
+                market.utilization = new BigNumber(market.total_borrows)
+                    .div(new BigNumber(market.cash)
+                        .plus(market.total_borrows)
+                        .minus(market.reserves)).toNumber();
+            }else{
+                market.utilization = 0;
+            }
+        }
         return { markets, account };
     }
 
@@ -298,19 +309,19 @@ class LendSdk {
             return true;
         }
 
-        let allowance = await this._getMultiTokenAllowance([{token:market.underlying_address,owner:account.address,spender:market.token_address}]);
+        let allowance = await this._getMultiTokenAllowance([{ token: market.underlying_address, owner: account.address, spender: market.token_address }]);
 
-        if(allowance.length > 0){
+        if (allowance.length > 0) {
             return BigNumber(allowance[0].allowance).gte(
                 '0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
             );
-        }else{
+        } else {
             return false;
         }
 
     }
 
-    maxBorrow(account, markets){
+    maxBorrow(account, markets) {
         let max_borrow = new BigNumber(0);
         for (let index = 0; index < account.tokens.length; index++) {
             const accountToken = account.tokens[index];
@@ -323,7 +334,7 @@ class LendSdk {
         return max_borrow.toNumber();
     }
 
-    totalSupplyBalance(account, markets){
+    totalSupplyBalance(account, markets) {
         let total_supply_value = new BigNumber(0);
         for (let index = 0; index < account.tokens.length; index++) {
             const accountToken = account.tokens[index];
@@ -336,7 +347,7 @@ class LendSdk {
         return total_supply_value.toNumber();
     }
 
-    totalBorrowBalance(account, markets){
+    totalBorrowBalance(account, markets) {
         let total_borrow_value = new BigNumber(0);
         for (let index = 0; index < account.tokens.length; index++) {
             const accountToken = account.tokens[index];
@@ -349,7 +360,7 @@ class LendSdk {
         return total_borrow_value.toNumber();
     }
 
-    totalSupplyApr(account, markets){
+    totalSupplyApr(account, markets) {
         let total_supply_interests = new BigNumber(0);
         for (let index = 0; index < account.tokens.length; index++) {
             const accountToken = account.tokens[index];
@@ -359,12 +370,12 @@ class LendSdk {
             )
         }
 
-        if(total_supply_interests.lte(0)) return 0;
+        if (total_supply_interests.lte(0)) return 0;
 
         return total_supply_interests.div(this.totalSupplyBalance(account, markets)).toNumber();
     }
 
-    totalBorrowApr(account, markets){
+    totalBorrowApr(account, markets) {
         let total_borrow_interests = new BigNumber(0);
         for (let index = 0; index < account.tokens.length; index++) {
             const accountToken = account.tokens[index];
@@ -374,13 +385,13 @@ class LendSdk {
             )
         }
 
-        if(total_borrow_interests.lte(0)) return 0;
+        if (total_borrow_interests.lte(0)) return 0;
 
         return total_borrow_interests.div(this.totalBorrowBalance(account, markets)).toNumber();
     }
-    totalNetApr(account, markets){
+    totalNetApr(account, markets) {
         let totalSupply = this.totalSupplyBalance(account, markets);
-        if(totalSupply <= 0) return 0;
+        if (totalSupply <= 0) return 0;
         let total_net_apr = new BigNumber(this.totalSupplyBalance(account, markets))
             .minus(this.totalBorrowBalance(account, markets))
             .div(totalSupply);
