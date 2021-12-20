@@ -22,6 +22,6 @@
   "dependencies": {
     "@makerdao/multicall": "^0.12.0",
     "bignumber.js": "^9.0.2",
-    "web3": "^1.6.1"
+    "web3": "^1.2.1"
   }
 }
