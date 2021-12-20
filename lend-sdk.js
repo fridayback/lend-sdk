@@ -190,25 +190,16 @@ class LendSdk {
             account = data[0];
         }else{
             return {
-                "accounts":[
-                    {
-                        "address":accountAddr,
-                        "health":"0",
-                        "net_asset_value":"0",
-                        "tokens":[],
-                        "total_borrow_value":"0",
-                        "total_collateral_value":"0",
-                        "timestamp":Date.now(),
-                        "comp_reward":"0",
-                        "rewardAddress":"",
-                        "rewardBalance":"0"
-                    }
-                ],
-                "paging":{
-                    "size":100,
-                    "page":0,
-                    "entries":1
-                }
+                "address":accountAddr,
+                "health":"0",
+                "net_asset_value":"0",
+                "tokens":[],
+                "total_borrow_value":"0",
+                "total_collateral_value":"0",
+                "timestamp":Date.now(),
+                "comp_reward":"0",
+                "rewardAddress":"",
+                "rewardBalance":"0"
             }
         }
         return account;
