@@ -1,12 +1,12 @@
 const LendSdk = require('./lend-sdk');
 
 var Web3 = require('web3');
-const web3 = new Web3(new Web3.providers.HttpProvider('https://gwan-ssl.wandevs.org:56891'));
+const web3 = new Web3(new Web3.providers.HttpProvider('https://rpc.testnet.moonbeam.network'));
 
 const config = {
-    apiUrl: 'https://v2.wanlend.finance:8889',
-    unitroller: '0xd6980C52C20Fb106e54cC6c8AE04c089C3F6B9d6',
-    multiCallAddr: '0xBa5934Ab3056fcA1Fa458D30FBB3810c3eb5145f'
+    apiUrl: 'http://192.168.1.121:8890',
+    unitroller: '0x39aaf046a9d32976a099bdb49dd6c537c28dd647',
+    multiCallAddr: '0x136333217C18Cd6E018B85Aaf8Bd563EB72E97Fd'
 }
 
 
