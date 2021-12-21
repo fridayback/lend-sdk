@@ -374,33 +374,41 @@ class LendSdk {
     }
 
     totalSupplyApr(account, markets) {
-        let total_supply_interests = new BigNumber(0);
-        for (let index = 0; index < account.tokens.length; index++) {
-            const accountToken = account.tokens[index];
-            const market = markets[accountToken.token_address];
-            total_supply_interests = total_supply_interests.plus(
-                new BigNumber(accountToken.supply_balance_underlying).times(market.supply_rate).times(market.underlying_price)
-            )
-        }
+        let {supply}= this.totalInterestPerBlock(account,markets);
 
-        if (total_supply_interests.lte(0)) return 0;
+        supply = new BigNumber(supply);
 
-        return total_supply_interests.div(this.totalSupplyBalance(account, markets)).toNumber();
+        if (supply.lte(0)) return 0;
+
+        return supply.div(this.totalSupplyBalance(account, markets)).toNumber();
     }
 
-    totalBorrowApr(account, markets) {
+    totalInterestPerBlock(account,markets){
         let total_borrow_interests = new BigNumber(0);
+        let total_supply_interests = new BigNumber(0);
+
         for (let index = 0; index < account.tokens.length; index++) {
             const accountToken = account.tokens[index];
             const market = markets[accountToken.token_address];
             total_borrow_interests = total_borrow_interests.plus(
                 new BigNumber(accountToken.borrow_balance_underlying).times(market.supply_rate).times(market.underlying_price)
-            )
+            );
+            total_supply_interests = total_supply_interests.plus(
+                new BigNumber(accountToken.supply_balance_underlying).times(market.supply_rate).times(market.underlying_price)
+            );
         }
 
-        if (total_borrow_interests.lte(0)) return 0;
+        return {supply:total_supply_interests.toNumber(),borrow:total_borrow_interests.toNumber()}
+    }
 
-        return total_borrow_interests.div(this.totalBorrowBalance(account, markets)).toNumber();
+    totalBorrowApr(account, markets) {
+        let {borrow}= this.totalInterestPerBlock(account,markets);
+
+        borrow = new BigNumber(borrow);
+
+        if (borrow.lte(0)) return 0;
+
+        return borrow.div(this.totalBorrowBalance(account, markets)).toNumber();
     }
     totalNetApr(account, markets) {
         let totalSupply = this.totalSupplyBalance(account, markets);
@@ -411,6 +419,62 @@ class LendSdk {
 
 
         return total_net_apr.toNumber();
+    }
+
+    freeLiquidity(account, markets,deltaBlock) {
+        if(deltaBlock <0) throw "bad deltaBlcok";
+
+        let maxCollateralValue = this.maxBorrow(account,markets);
+        let {supply,borrow} = this.totalInterestPerBlock(account,markets);
+
+        return new BigNumber(maxCollateralValue).minus((supply-borrow)*deltaBlock).toString(10);
+    }
+
+    maxFreeReedemAmountOfAllMarket(account,markets,deltaBlock = 20){
+        let freeCollateral = this.freeLiquidity(account,markets,deltaBlock);
+        freeCollateral = new BigNumber(freeCollateral);
+
+        let maxReedemOfAllMarkets = {}
+
+        for (const key in markets) {
+            maxReedemOfAllMarkets[key] = 0;
+        }
+        if(freeCollateral <=0) return maxReedemOfAllMarkets;
+
+        for (let index = 0; index < account.tokens.length; index++) {
+            const accountToken = account.tokens[index];
+            const market = markets[accountToken.token_address];
+            
+            maxReedemOfAllMarkets[accountToken.token_address] = freeCollateral.div(market.underlying_price).toString(10);
+
+            if(maxReedemOfAllMarkets[accountToken.token_address] > accountToken.supply_balance_underlying){
+                maxReedemOfAllMarkets[accountToken.token_address] = accountToken.supply_balance_underlying
+            }
+        }
+
+        return maxReedemOfAllMarkets;
+    }
+
+    maxFreeBorrowOfAllMarket(account,markets,deltaBlock = 20,percent = 0.8){
+        let freeBorrow = this.freeLiquidity(account,markets,deltaBlock);
+        
+        freeBorrow = new BigNumber(freeBorrow).times(percent);
+
+        let maxBorrowOfAllMarkets = {}
+
+        for (const key in markets) {
+            maxBorrowOfAllMarkets[key] = 0;
+        }
+        if(freeBorrow <=0) return maxBorrowOfAllMarkets;
+
+        for (let index = 0; index < account.tokens.length; index++) {
+            const accountToken = account.tokens[index];
+            const market = markets[accountToken.token_address];
+            
+            maxBorrowOfAllMarkets[accountToken.token_address] = freeBorrow.div(market.underlying_price).toString(10);
+        }
+
+        return maxBorrowOfAllMarkets;
     }
 
 

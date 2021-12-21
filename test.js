@@ -35,6 +35,8 @@ compoundSdk.getCompoundData(account).then(async ({markets,account})=>{
     console.log('totalSupplyApr:',compoundSdk.totalSupplyApr(account,markets));
     console.log('totalBorrowApr:',compoundSdk.totalBorrowApr(account,markets));
     console.log('totalNetApr:',compoundSdk.totalNetApr(account,markets));
+    console.log('maxFreeReedemAmountOfAllMarket:',compoundSdk.maxFreeReedemAmountOfAllMarket(account,markets));
+    console.log('maxFreeBorrowOfAllMarket:',compoundSdk.maxFreeBorrowOfAllMarket(account,markets));
     
 }).catch(e=>{
     console.error(e);
