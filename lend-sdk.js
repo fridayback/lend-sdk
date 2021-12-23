@@ -179,6 +179,18 @@ class LendSdk {
             markets[market.token_address] = market;
         }
 
+        for (const key in markets) {
+            let market = markets[key];
+            if (new BigNumber(market.cash).plus(market.total_borrows).minus(market.reserves).gt(0)) {
+                market.utilization = new BigNumber(market.total_borrows)
+                    .div(new BigNumber(market.cash)
+                        .plus(market.total_borrows)
+                        .minus(market.reserves)).toNumber();
+            }else{
+                market.utilization = 0;
+            }
+        }
+
         return markets;
     }
 
@@ -217,17 +229,17 @@ class LendSdk {
         //     let accountToken = account[index];
         //     accountToken.market = markets[accountToken.token_address];
         // }
-        for (const key in markets) {
-            let market = markets[key];
-            if (new BigNumber(market.cash).plus(market.total_borrows).minus(market.reserves).gt(0)) {
-                market.utilization = new BigNumber(market.total_borrows)
-                    .div(new BigNumber(market.cash)
-                        .plus(market.total_borrows)
-                        .minus(market.reserves)).toNumber();
-            }else{
-                market.utilization = 0;
-            }
-        }
+        // for (const key in markets) {
+        //     let market = markets[key];
+        //     if (new BigNumber(market.cash).plus(market.total_borrows).minus(market.reserves).gt(0)) {
+        //         market.utilization = new BigNumber(market.total_borrows)
+        //             .div(new BigNumber(market.cash)
+        //                 .plus(market.total_borrows)
+        //                 .minus(market.reserves)).toNumber();
+        //     }else{
+        //         market.utilization = 0;
+        //     }
+        // }
         return { markets, account };
     }
 
