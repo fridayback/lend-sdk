@@ -438,8 +438,9 @@ class LendSdk {
 
         let maxCollateralValue = this.maxBorrow(account,markets);
         let {supply,borrow} = this.totalInterestPerBlock(account,markets);
+        let borrowed = this.totalBorrowBalance(account,markets);
 
-        return new BigNumber(maxCollateralValue).minus((supply-borrow)*deltaBlock).toString(10);
+        return new BigNumber(maxCollateralValue).minus((supply-borrow)*deltaBlock).minus(borrowed).toString(10);
     }
 
     maxFreeReedemAmountOfAllMarket(account,markets,deltaBlock = 20){
