@@ -3,142 +3,8 @@ const { aggregate } = require('@makerdao/multicall');
 const BigNumber = require('bignumber.js');
 
 const MAX_MULTI_SIZE = 20;
+const BLOCKS_PER_YEAR = 2628000;
 
-// const CompoundOperationCode = {
-//     Mint: 'mint',
-//     Redeem: 'redeem',
-//     RedeemUnderlying: 'redeemUnderlying',
-//     Borrow: 'borrow',
-//     Repay: 'repay',
-//     Collateral: 'enterMarkets',
-//     CanCelCollateral: 'exitMarket',
-//     Liquidate: 'liquidate',
-//     Approve: 'approve',
-// };
-
-// // class Market {
-// //     constructor() {
-// //         this.properties = {
-// //             cash: 0,
-// //             collateral_factor: 0,
-// //             exchange_rate: 0,
-// //             interest_rate_model_address: '',
-// //             name: '',
-// //             symbol: '',
-// //             decimals: 8,
-// //             token_address: '',
-// //             underlying_address: '',
-// //             underlying_name: '',
-// //             underlying_symbol: '',
-// //             underlying_decimals: 0,
-// //             number_of_borrowers: 0,
-// //             number_of_suppliers: 0,
-// //             underlying_price: 0,
-// //             reserves: 0,
-// //             borrow_index: 0,
-// //             accrual_block_number: 0,
-// //             supply_rate: 0,
-// //             borrow_rate: 0,
-// //             total_supply: 0,
-// //             total_borrows: 0,
-// //             timestamp: 0,
-// //             price_oracle: '',
-// //             close_factor: 0,
-// //             liquidation_incentive: 0,
-// //             multiplierPerBlock: 0,
-// //             baseRatePerBlock: 0,
-// //             comp_speed: 0,
-// //             comp_index_borrow: 0,
-// //             comp_block_borrow: 0,
-// //             comp_index_supply: 0,
-// //             comp_block_supply: 0,
-// //             rewardAddress: '',
-// //             totalSpeed: 0,
-// //             halfBonusPerBlock: 0,
-// //             startBlock: 0,
-// //             borrowCap: 0,
-// //             reserve_factor: 0.2,
-// //             utilization:0
-// //         }
-// //     }
-
-// //     static newMarket(data) {
-// //         let market = new Market();
-// //         market.properties = data;
-// //         market.utilization = 0;
-// //         if(new BigNumber(market.cash).plus(market.total_borrows).minus(market.reserves).gt(0)){
-// //             market.utilization = new BigNumber(market.total_borrows)
-// //             .div(new BigNumber(market.cash)
-// //             .plus(market.total_borrows)
-// //             .minus(market.reserves))
-// //         }
-
-
-// //         return market;
-// //     }
-// // }
-
-// // class AccountToken {
-// //     constructor() {
-// //         this.properties = {
-// //             account_address: '',
-// //             token_address: '',
-// //             is_entered: false,
-// //             account_total_borrow: 0,
-// //             account_total_repay: 0,
-// //             account_total_supply: 0,
-// //             account_total_redeem: 0,
-// //             account_total_liquidated: 0,
-// //             account_total_liquidate: 0,
-// //             lifetime_borrow_interest_accrued: 0.00000000,
-// //             lifetime_supply_interest_accrued: 0.00000000,
-// //             supply_balance: 0,
-// //             borrow_balance_underlying: 0.00000000,
-// //             supply_balance_underlying: 0.00000000,
-// //             timestamp: 0,
-// //             comp_index_borrow: 0,
-// //             comp_index_supply: 0
-// //         }
-// //         this.market = undefined;
-// //     }
-
-// //     static newAccountToken(data) {
-// //         let accountToken = new AccountToken();
-// //         accountToken.properties = data;
-// //         return accountToken;
-// //     }
-// // }
-
-
-// // class Account {
-// //     constructor() {
-// //         this.properties = {
-// //             address: '',
-// //             health: 0,
-// //             net_asset_value: 0,
-// //             tokens: [],
-// //             total_borrow_value: 0,
-// //             total_collateral_value: 0,
-// //             timestamp: 0,
-// //             comp_reward: 0,
-// //             rewardAddress: "",
-// //             rewardBalance: 0
-// //         }
-// //     }
-
-// //     static newAccount(data) {
-// //         let account = new Account();
-// //         account.properties = data;
-// //         let tokens = data.tokens;
-// //         account.tokens = [];
-// //         for (let index = 0; index < tokens.length; index++) {
-// //             const accountToken = new AccountToken(tokens[index]);
-// //             account.tokens.push(accountToken);
-// //         }
-// //         return account;
-// //     }
-
-// // }
 
 class LendSdk {
     constructor(config, web3provider) {
@@ -403,10 +269,10 @@ class LendSdk {
             const accountToken = account.tokens[index];
             const market = markets[accountToken.token_address];
             total_borrow_interests = total_borrow_interests.plus(
-                new BigNumber(accountToken.borrow_balance_underlying).times(market.supply_rate).times(market.underlying_price)
+                new BigNumber(accountToken.borrow_balance_underlying).times(market.borrow_rate).times(market.underlying_price).div(BLOCKS_PER_YEAR)
             );
             total_supply_interests = total_supply_interests.plus(
-                new BigNumber(accountToken.supply_balance_underlying).times(market.supply_rate).times(market.underlying_price)
+                new BigNumber(accountToken.supply_balance_underlying).times(market.supply_rate).times(market.underlying_price).div(BLOCKS_PER_YEAR)
             );
         }
 
@@ -440,7 +306,7 @@ class LendSdk {
         let {supply,borrow} = this.totalInterestPerBlock(account,markets);
         let borrowed = this.totalBorrowBalance(account,markets);
 
-        return new BigNumber(maxCollateralValue).minus((supply-borrow)*deltaBlock).minus(borrowed).toString(10);
+        return new BigNumber(maxCollateralValue).minus((borrow - supply)*deltaBlock).minus(borrowed).toString(10);
     }
 
     maxFreeReedemAmountOfAllMarket(account,markets,deltaBlock = 20){
