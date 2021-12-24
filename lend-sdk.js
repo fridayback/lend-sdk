@@ -469,7 +469,7 @@ class LendSdk {
             }
             
 
-            if(maxReedemOfAllMarkets[accountToken.token_address] > accountToken.supply_balance_underlying){
+            if(new BigNumber(maxReedemOfAllMarkets[accountToken.token_address]).gt(accountToken.supply_balance_underlying)){
                 maxReedemOfAllMarkets[accountToken.token_address] = accountToken.supply_balance_underlying
             }
         }
