@@ -4,13 +4,13 @@ var Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.HttpProvider('https://rpc.testnet.moonbeam.network'));
 
 const config = {
-    apiUrl: 'http://192.168.1.121:8890',
-    unitroller: '0x39aaf046a9d32976a099bdb49dd6c537c28dd647',
+    apiUrl: 'https://lend-api.huckleberry.finance',
+    unitroller: '0x6652efa0a15939e8013522ac24dc3e6cb1a1f3e1',
     multiCallAddr: '0x136333217C18Cd6E018B85Aaf8Bd563EB72E97Fd'
 }
 
 
-const account = '0x52F1045671F56f572f7743232B558dDCa0627e10';
+const account = '0x52F1045671F56f572f7743232B558dDCa0627e10';//'0xD837BBcd310B2910eA89F2E064Ab4dA91C8357bb';
 
 let compoundSdk = new LendSdk(config,web3);
 
@@ -37,6 +37,8 @@ compoundSdk.getCompoundData(account).then(async ({markets,account})=>{
     console.log('totalNetApr:',compoundSdk.totalNetApr(account,markets));
     console.log('maxFreeReedemAmountOfAllMarket:',compoundSdk.maxFreeReedemAmountOfAllMarket(account,markets));
     console.log('maxFreeBorrowOfAllMarket:',compoundSdk.maxFreeBorrowOfAllMarket(account,markets));
+    console.log('maxFreeReedemAmountOfAllMarket:',compoundSdk.maxFreeReedemAmountOfAllMarket(account,markets));
+    
     
 }).catch(e=>{
     console.error(e);
