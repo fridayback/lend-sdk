@@ -373,7 +373,7 @@ class LendSdk {
 
         if(new BigNumber(borrowed).div(maxBorrow).gt(percent)) return maxBorrowOfAllMarkets;
 
-        let availableBorrow = new BigNumber(maxBorrow).minus(borrowed);
+        let availableBorrow = new BigNumber(maxBorrow).times(percent).minus(borrowed);
         if(freeBorrow.gte(availableBorrow)){
             freeBorrow = availableBorrow;
         }
