@@ -318,12 +318,16 @@ class LendSdk {
         let freeCollateral = this.freeLiquidity(account,markets,deltaBlock);
         freeCollateral = new BigNumber(freeCollateral);
 
+        let freeCollateralNoDelta = this.freeLiquidity(account,markets,0);
+        freeCollateralNoDelta = new BigNumber(freeCollateralNoDelta);
+
         let maxReedemOfAllMarkets = {}
 
         for (const key in markets) {
-            maxReedemOfAllMarkets[key] = 0;
+            maxReedemOfAllMarkets[key] = '0';
         }
-        if(freeCollateral <=0) return maxReedemOfAllMarkets;
+        
+        if(freeCollateral.lte(0)) return maxReedemOfAllMarkets;
 
         for (let index = 0; index < account.tokens.length; index++) {
             
@@ -333,7 +337,12 @@ class LendSdk {
             if(new BigNumber(totalBorrowed).lte(0) || !accountToken.is_entered) {
                 maxReedemOfAllMarkets[accountToken.token_address] = accountToken.supply_balance_underlying;
             }else{
-                maxReedemOfAllMarkets[accountToken.token_address] = freeCollateral.div(market.underlying_price).toString(10);
+                if(new BigNumber(market.collateral_factor).lte(0)){
+                    maxReedemOfAllMarkets[accountToken.token_address] = accountToken.supply_balance_underlying;
+                }else{
+                    maxReedemOfAllMarkets[accountToken.token_address] = freeCollateral.div(market.underlying_price).div(market.collateral_factor).toString(10);
+                }
+                
             }
             
 
