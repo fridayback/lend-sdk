@@ -258,7 +258,7 @@ class LendSdk {
 
         if (supply.lte(0)) return 0;
 
-        return supply.div(this.totalSupplyBalance(account, markets)).toNumber();
+        return supply.times(BLOCKS_PER_YEAR).div(this.totalSupplyBalance(account, markets)).toNumber();
     }
 
     totalInterestPerBlock(account,markets){
@@ -286,13 +286,15 @@ class LendSdk {
 
         if (borrow.lte(0)) return 0;
 
-        return borrow.div(this.totalBorrowBalance(account, markets)).toNumber();
+        return borrow.times(BLOCKS_PER_YEAR).div(this.totalBorrowBalance(account, markets)).toNumber();
     }
     totalNetApr(account, markets) {
         let totalSupply = this.totalSupplyBalance(account, markets);
         if (totalSupply <= 0) return 0;
-        let total_net_apr = new BigNumber(this.totalSupplyBalance(account, markets))
-            .minus(this.totalBorrowBalance(account, markets))
+
+        let {supply, borrow} = this.totalInterestPerBlock(account,markets);
+        let total_net_apr = new BigNumber(supply)
+            .minus(borrow).times(BLOCKS_PER_YEAR)
             .div(totalSupply);
 
 
