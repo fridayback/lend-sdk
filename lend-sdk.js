@@ -347,15 +347,29 @@ class LendSdk {
 
     maxFreeBorrowOfAllMarket(account,markets,deltaBlock = 20,percent = 0.8){
         let freeBorrow = this.freeLiquidity(account,markets,deltaBlock);
+
+        let borrowed = this.totalBorrowBalance(account,markets);
+
+        let maxBorrow = this.maxBorrow(account,markets);
+
         
-        freeBorrow = new BigNumber(freeBorrow).times(percent);
+        
+        freeBorrow = new BigNumber(freeBorrow);
 
         let maxBorrowOfAllMarkets = {}
 
         for (const key in markets) {
-            maxBorrowOfAllMarkets[key] = 0;
+            maxBorrowOfAllMarkets[key] = '0';
         }
-        if(freeBorrow <=0) return maxBorrowOfAllMarkets;
+
+        if(new BigNumber(borrowed).div(maxBorrow).gt(percent)) return maxBorrowOfAllMarkets;
+
+        let availableBorrow = new BigNumber(maxBorrow).minus(borrowed);
+        if(freeBorrow.gte(availableBorrow)){
+            freeBorrow = availableBorrow;
+        }
+        
+        // if(freeBorrow <=0) return maxBorrowOfAllMarkets;
 
         for (let index = 0; index < account.tokens.length; index++) {
             const accountToken = account.tokens[index];
