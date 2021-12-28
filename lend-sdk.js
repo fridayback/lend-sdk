@@ -325,7 +325,20 @@ class LendSdk {
         let maxReedemOfAllMarkets = {}
 
         for (const key in markets) {
-            maxReedemOfAllMarkets[key] = '0';
+            const market = markets[key];
+            const accountToken = account.tokens.find((item,index,arr)=>{
+                if(item.token_address.toLowerCase() === market.token_address.toLowerCase()){
+                    return true;
+                }
+                return false;
+            });
+
+            if(new BigNumber(market.collateral_factor).lte(0) || !accountToken.is_entered){
+                if(accountToken) maxReedemOfAllMarkets[key] = accountToken.supply_balance_underlying;
+            }else{
+                maxReedemOfAllMarkets[key] = '0';
+            }
+            
         }
         
         if(freeCollateral.lte(0)) return maxReedemOfAllMarkets;
@@ -335,11 +348,11 @@ class LendSdk {
             const accountToken = account.tokens[index];
             const market = markets[accountToken.token_address];
 
-            if(new BigNumber(totalBorrowed).lte(0) || !accountToken.is_entered) {
+            if(new BigNumber(totalBorrowed).lte(0)) {
                 maxReedemOfAllMarkets[accountToken.token_address] = accountToken.supply_balance_underlying;
             }else{
-                if(new BigNumber(market.collateral_factor).lte(0)){
-                    maxReedemOfAllMarkets[accountToken.token_address] = accountToken.supply_balance_underlying;
+                if(new BigNumber(market.collateral_factor).lte(0) || !accountToken.is_entered){
+                    // maxReedemOfAllMarkets[accountToken.token_address] = accountToken.supply_balance_underlying;
                 }else{
                     maxReedemOfAllMarkets[accountToken.token_address] = freeCollateral.div(market.underlying_price).div(market.collateral_factor).toString(10);
                 }
@@ -372,6 +385,9 @@ class LendSdk {
             maxBorrowOfAllMarkets[key] = '0';
         }
 
+        if(freeBorrow.lte(0)) return maxBorrowOfAllMarkets;
+
+
         if(new BigNumber(borrowed).div(maxBorrow).gt(percent)) return maxBorrowOfAllMarkets;
 
         let availableBorrow = new BigNumber(maxBorrow).times(percent).minus(borrowed);
@@ -379,7 +395,6 @@ class LendSdk {
             freeBorrow = availableBorrow;
         }
         
-        // if(freeBorrow <=0) return maxBorrowOfAllMarkets;
 
         for (let index = 0; index < account.tokens.length; index++) {
             const accountToken = account.tokens[index];
