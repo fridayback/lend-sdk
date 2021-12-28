@@ -217,6 +217,7 @@ class LendSdk {
         for (let index = 0; index < account.tokens.length; index++) {
             const accountToken = account.tokens[index];
             const market = markets[accountToken.token_address];
+            if(!accountToken.is_entered) continue;
             max_borrow = max_borrow.plus(
                 new BigNumber(accountToken.supply_balance_underlying).times(market.underlying_price).times(market.collateral_factor)
             )
