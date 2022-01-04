@@ -52,7 +52,7 @@ class LendSdk {
                     .div(new BigNumber(market.cash)
                         .plus(market.total_borrows)
                         .minus(market.reserves)).toNumber();
-            }else{
+            } else {
                 market.utilization = 0;
             }
         }
@@ -66,18 +66,18 @@ class LendSdk {
         let account;
         if (data.length > 0) {
             account = data[0];
-        }else{
+        } else {
             return {
-                "address":accountAddr,
-                "health":"0",
-                "net_asset_value":"0",
-                "tokens":[],
-                "total_borrow_value":"0",
-                "total_collateral_value":"0",
-                "timestamp":Date.now(),
-                "comp_reward":"0",
-                "rewardAddress":"",
-                "rewardBalance":"0"
+                "address": accountAddr,
+                "health": "0",
+                "net_asset_value": "0",
+                "tokens": [],
+                "total_borrow_value": "0",
+                "total_collateral_value": "0",
+                "timestamp": Date.now(),
+                "comp_reward": "0",
+                "rewardAddress": "",
+                "rewardBalance": "0"
             }
         }
         return account;
@@ -217,7 +217,7 @@ class LendSdk {
         for (let index = 0; index < account.tokens.length; index++) {
             const accountToken = account.tokens[index];
             const market = markets[accountToken.token_address];
-            if(!accountToken.is_entered) continue;
+            if (!accountToken.is_entered) continue;
             max_borrow = max_borrow.plus(
                 new BigNumber(accountToken.supply_balance_underlying).times(market.underlying_price).times(market.collateral_factor)
             )
@@ -253,7 +253,7 @@ class LendSdk {
     }
 
     totalSupplyApr(account, markets) {
-        let {supply}= this.totalInterestPerBlock(account,markets);
+        let { supply } = this.totalInterestPerBlock(account, markets);
 
         supply = new BigNumber(supply);
 
@@ -262,7 +262,7 @@ class LendSdk {
         return supply.times(BLOCKS_PER_YEAR).div(this.totalSupplyBalance(account, markets)).toNumber();
     }
 
-    totalInterestPerBlock(account,markets){
+    totalInterestPerBlock(account, markets) {
         let total_borrow_interests = new BigNumber(0);
         let total_supply_interests = new BigNumber(0);
 
@@ -277,11 +277,11 @@ class LendSdk {
             );
         }
 
-        return {supply:total_supply_interests.toNumber(),borrow:total_borrow_interests.toNumber()}
+        return { supply: total_supply_interests.toNumber(), borrow: total_borrow_interests.toNumber() }
     }
 
     totalBorrowApr(account, markets) {
-        let {borrow}= this.totalInterestPerBlock(account,markets);
+        let { borrow } = this.totalInterestPerBlock(account, markets);
 
         borrow = new BigNumber(borrow);
 
@@ -293,7 +293,7 @@ class LendSdk {
         let totalSupply = this.totalSupplyBalance(account, markets);
         if (totalSupply <= 0) return 0;
 
-        let {supply, borrow} = this.totalInterestPerBlock(account,markets);
+        let { supply, borrow } = this.totalInterestPerBlock(account, markets);
         let total_net_apr = new BigNumber(supply)
             .minus(borrow).times(BLOCKS_PER_YEAR)
             .div(totalSupply);
@@ -302,81 +302,100 @@ class LendSdk {
         return total_net_apr.toNumber();
     }
 
-    freeLiquidity(account, markets,deltaBlock) {
-        if(deltaBlock <0) throw "bad deltaBlcok";
+    freeLiquidity(account, markets, deltaBlock) {
+        if (deltaBlock < 0) throw "bad deltaBlcok";
 
-        let maxCollateralValue = this.maxBorrow(account,markets);
-        let {supply,borrow} = this.totalInterestPerBlock(account,markets);
-        let borrowed = this.totalBorrowBalance(account,markets);
+        let maxCollateralValue = this.maxBorrow(account, markets);
+        let { supply, borrow } = this.totalInterestPerBlock(account, markets);
+        let borrowed = this.totalBorrowBalance(account, markets);
 
-        return new BigNumber(maxCollateralValue).minus((borrow - supply)*deltaBlock).minus(borrowed).toString(10);
+        return new BigNumber(maxCollateralValue).minus((borrow - supply) * deltaBlock).minus(borrowed).toString(10);
     }
 
-    maxFreeReedemAmountOfAllMarket(account,markets,deltaBlock = 20){
+    maxFreeReedemAmountOfAllMarket(account, markets, deltaBlock = 20, percent = 0.8) {
 
-        let totalBorrowed = this.totalBorrowBalance(account,markets);
-        
-        let freeCollateral = this.freeLiquidity(account,markets,deltaBlock);
-        freeCollateral = new BigNumber(freeCollateral);
+        let totalBorrowed = this.totalBorrowBalance(account, markets);
 
-        let freeCollateralNoDelta = this.freeLiquidity(account,markets,0);
-        freeCollateralNoDelta = new BigNumber(freeCollateralNoDelta);
+        let maxBorrow = this.maxBorrow(account, markets);
 
         let maxReedemOfAllMarkets = {}
 
+        if (new BigNumber(maxBorrow).lte(0) || new BigNumber(totalBorrowed).div(maxBorrow).gte(percent)) {
+            for (const key in markets) {
+                maxReedemOfAllMarkets[key] = { amount: '0', method: 'redeemUnderlying' };
+            }
+            return maxReedemOfAllMarkets;
+        }
+
+
         for (const key in markets) {
+
             const market = markets[key];
-            const accountToken = account.tokens.find((item,index,arr)=>{
-                if(item.token_address.toLowerCase() === market.token_address.toLowerCase()){
+            const accountToken = account.tokens.find((item, index, arr) => {
+                if (item.token_address.toLowerCase() === market.token_address.toLowerCase()) {
                     return true;
                 }
                 return false;
             });
 
-            if(new BigNumber(market.collateral_factor).lte(0) || !accountToken.is_entered){
-                if(accountToken) maxReedemOfAllMarkets[key] = accountToken.supply_balance_underlying;
-            }else{
-                maxReedemOfAllMarkets[key] = '0';
+            if (!accountToken.is_entered) {
+                if (accountToken) maxReedemOfAllMarkets[key] = { amount: accountToken.supply_balance_underlying, method: 'redeem' };
+            } else {
+                maxReedemOfAllMarkets[key] = { amount: '0', method: 'redeemUnderlying' };
             }
-            
+
         }
-        
-        if(freeCollateral.lte(0)) return maxReedemOfAllMarkets;
+
+        let freeCollateral = this.freeLiquidity(account, markets, deltaBlock);
+        freeCollateral = new BigNumber(freeCollateral);
+        if (freeCollateral.lte(0)) return maxReedemOfAllMarkets;
+
+        let suppliedMarkets = 0;
+        let borrowedMarkets = 0;
 
         for (let index = 0; index < account.tokens.length; index++) {
-            
+
             const accountToken = account.tokens[index];
             const market = markets[accountToken.token_address];
 
-            if(new BigNumber(totalBorrowed).lte(0)) {
-                maxReedemOfAllMarkets[accountToken.token_address] = accountToken.supply_balance_underlying;
-            }else{
-                if(new BigNumber(market.collateral_factor).lte(0) || !accountToken.is_entered){
-                    // maxReedemOfAllMarkets[accountToken.token_address] = accountToken.supply_balance_underlying;
-                }else{
-                    maxReedemOfAllMarkets[accountToken.token_address] = freeCollateral.div(market.underlying_price).div(market.collateral_factor).toString(10);
-                }
-                
-            }
-            
+            if (new BigNumber(accountToken.supply_balance).gt(0)) suppliedMarkets++;
+            if (new BigNumber(accountToken.borrow_balance_underlying).gt(0)) borrowedMarkets++;
 
-            if(new BigNumber(maxReedemOfAllMarkets[accountToken.token_address]).gt(accountToken.supply_balance_underlying)){
-                maxReedemOfAllMarkets[accountToken.token_address] = accountToken.supply_balance_underlying
+            if (new BigNumber(totalBorrowed).lte(0)) {
+                maxReedemOfAllMarkets[accountToken.token_address] = accountToken.supply_balance_underlying;
+            } else {
+
+                if (new BigNumber(market.collateral_factor).lte(0) || !accountToken.is_entered) {
+                    // maxReedemOfAllMarkets[accountToken.token_address] = accountToken.supply_balance_underlying;
+                } else {
+                    maxReedemOfAllMarkets[accountToken.token_address] = { amount: freeCollateral.div(market.underlying_price).div(market.collateral_factor).toString(10), method: 'redeemUnderlying' };
+                }
+
+            }
+
+
+            if (new BigNumber(maxReedemOfAllMarkets[accountToken.token_address]).gte(accountToken.supply_balance_underlying)) {
+                maxReedemOfAllMarkets[accountToken.token_address].amount = accountToken.supply_balance_underlying;
+                if (borrowedMarkets > 0 && suppliedMarkets === 1) {
+                    maxReedemOfAllMarkets[accountToken.token_address].method = 'redeemUnderlying';
+                } else {
+                    maxReedemOfAllMarkets[accountToken.token_address].method = 'redeem';
+                }
             }
         }
 
         return maxReedemOfAllMarkets;
     }
 
-    maxFreeBorrowOfAllMarket(account,markets,deltaBlock = 20,percent = 0.8){
-        let freeBorrow = this.freeLiquidity(account,markets,deltaBlock);
+    maxFreeBorrowOfAllMarket(account, markets, deltaBlock = 20, percent = 0.8) {
+        let freeBorrow = this.freeLiquidity(account, markets, deltaBlock);
 
-        let borrowed = this.totalBorrowBalance(account,markets);
+        let borrowed = this.totalBorrowBalance(account, markets);
 
-        let maxBorrow = this.maxBorrow(account,markets);
+        let maxBorrow = this.maxBorrow(account, markets);
 
-        
-        
+
+
         freeBorrow = new BigNumber(freeBorrow);
 
         let maxBorrowOfAllMarkets = {}
@@ -385,21 +404,21 @@ class LendSdk {
             maxBorrowOfAllMarkets[key] = '0';
         }
 
-        if(freeBorrow.lte(0)) return maxBorrowOfAllMarkets;
+        if (freeBorrow.lte(0)) return maxBorrowOfAllMarkets;
 
 
-        if(new BigNumber(borrowed).div(maxBorrow).gt(percent)) return maxBorrowOfAllMarkets;
+        if (new BigNumber(borrowed).div(maxBorrow).gt(percent)) return maxBorrowOfAllMarkets;
 
         let availableBorrow = new BigNumber(maxBorrow).times(percent).minus(borrowed);
-        if(freeBorrow.gte(availableBorrow)){
+        if (freeBorrow.gte(availableBorrow)) {
             freeBorrow = availableBorrow;
         }
-        
+
 
         for (let index = 0; index < account.tokens.length; index++) {
             const accountToken = account.tokens[index];
             const market = markets[accountToken.token_address];
-            
+
             maxBorrowOfAllMarkets[accountToken.token_address] = freeBorrow.div(market.underlying_price).toString(10);
         }
 
