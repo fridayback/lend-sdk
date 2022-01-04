@@ -348,7 +348,10 @@ class LendSdk {
 
         let freeCollateral = this.freeLiquidity(account, markets, deltaBlock);
         // freeCollateral = new BigNumber(freeCollateral);
-        freeCollateral = new BigNumber(maxBorrow).times(percent).minus(totalBorrowed);
+        let newMaxBorrow = new BigNumber(totalBorrowed).div(percent);
+        let deltaMaxBorrow = new BigNumber(maxBorrow).minus(newMaxBorrow);
+        if(deltaMaxBorrow.lt(freeCollateral)) freeCollateral = deltaMaxBorrow
+
         if (freeCollateral.lte(0)) return maxReedemOfAllMarkets;
 
         let suppliedMarkets = 0;
