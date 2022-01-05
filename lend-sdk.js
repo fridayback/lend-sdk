@@ -366,7 +366,7 @@ class LendSdk {
             if (new BigNumber(accountToken.borrow_balance_underlying).gt(0)) borrowedMarkets++;
 
             if (new BigNumber(totalBorrowed).lte(0)) {
-                maxReedemOfAllMarkets[accountToken.token_address] = accountToken.supply_balance_underlying;
+                maxReedemOfAllMarkets[accountToken.token_address] = {amount: accountToken.supply_balance_underlying,method: 'redeem'};
             } else {
 
                 if (new BigNumber(market.collateral_factor).lte(0) || !accountToken.is_entered) {
