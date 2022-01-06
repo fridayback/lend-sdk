@@ -330,11 +330,18 @@ class LendSdk {
                 return false;
             });
 
-            if (!accountToken.is_entered) {
-                if (accountToken) maxReedemOfAllMarkets[key] = { amount: accountToken.supply_balance_underlying, method: 'redeem' };
-            } else {
-                maxReedemOfAllMarkets[key] = { amount: '0', method: 'redeemUnderlying' };
+            maxReedemOfAllMarkets[key] = { amount: '0', method: 'redeem' };
+
+            if (accountToken && (!accountToken.is_entered || new BigNumber(totalBorrowed).gte(0))){
+                maxReedemOfAllMarkets[key] = { amount: accountToken.supply_balance_underlying, method: 'redeem' };
             }
+           
+
+            // if ((accountToken && !accountToken.is_entered) || new BigNumber(totalBorrowed).gte(0)) {
+            //     if (accountToken) maxReedemOfAllMarkets[key] = { amount: accountToken.supply_balance_underlying, method: 'redeem' };
+            // } else {
+            //     maxReedemOfAllMarkets[key] = { amount: '0', method: 'redeemUnderlying' };
+            // }
 
         }
 
