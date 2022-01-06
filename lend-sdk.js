@@ -318,6 +318,13 @@ class LendSdk {
 
         let maxBorrow = this.maxBorrow(account, markets);
 
+        let {borrow}= this.totalInterestPerBlock(account,markets);
+
+        let borrowLimited = 0;
+        if(new BigNumber(maxBorrow).gt(0)){
+            borrowLimited = new BigNumber(totalBorrowed).plus(borrow).div(maxBorrow);
+        }
+
         let maxReedemOfAllMarkets = {}
 
         for (const key in markets) {
@@ -359,7 +366,10 @@ class LendSdk {
         let deltaMaxBorrow = new BigNumber(maxBorrow).minus(newMaxBorrow);
         if(deltaMaxBorrow.lt(freeCollateral)) freeCollateral = deltaMaxBorrow
 
-        if (freeCollateral.lte(0)) return maxReedemOfAllMarkets;
+        if (freeCollateral.lte(0)) {
+            freeCollateral = new BigNumber(0);
+            // return maxReedemOfAllMarkets;
+        }
 
         let suppliedMarkets = 0;
         let borrowedMarkets = 0;
@@ -372,8 +382,12 @@ class LendSdk {
             if (new BigNumber(accountToken.supply_balance).gt(0)) suppliedMarkets++;
             if (new BigNumber(accountToken.borrow_balance_underlying).gt(0)) borrowedMarkets++;
 
-            if (new BigNumber(totalBorrowed).gt(0) && accountToken.is_entered){
+            if (new BigNumber(totalBorrowed).gt(0) && accountToken.is_entered && market.collateral_factor*1>0){
                 maxReedemOfAllMarkets[accountToken.token_address] = { amount: freeCollateral.div(market.underlying_price).div(market.collateral_factor).toString(10), method: 'redeemUnderlying' };
+            }
+
+            if (market.collateral_factor*1 === 0 && accountToken.is_entered && borrowLimited.lt(1)){
+                maxReedemOfAllMarkets[accountToken.token_address] = { amount: accountToken.supply_balance_underlying, method: 'redeem' };
             }
             // if (new BigNumber(totalBorrowed).gt(0) && accountToken.is_entered) {
             //     // maxReedemOfAllMarkets[accountToken.token_address] = {amount: accountToken.supply_balance_underlying,method: 'redeem'};
@@ -388,7 +402,7 @@ class LendSdk {
             // }
 
 
-            if (new BigNumber(maxReedemOfAllMarkets[accountToken.token_address].amount).gte(accountToken.supply_balance_underlying)) {
+            if (new BigNumber(maxReedemOfAllMarkets[accountToken.token_address].amount).gte(accountToken.supply_balance_underlying)  && accountToken.is_entered) {
                 maxReedemOfAllMarkets[accountToken.token_address].amount = accountToken.supply_balance_underlying;
                 if (borrowedMarkets > 0 && suppliedMarkets === 1) {
                     maxReedemOfAllMarkets[accountToken.token_address].method = 'redeemUnderlying';
