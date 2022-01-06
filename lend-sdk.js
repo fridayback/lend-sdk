@@ -332,7 +332,7 @@ class LendSdk {
 
             maxReedemOfAllMarkets[key] = { amount: '0', method: 'redeem' };
 
-            if (accountToken && (!accountToken.is_entered || new BigNumber(totalBorrowed).gte(0))){
+            if (accountToken && (!accountToken.is_entered || new BigNumber(totalBorrowed).lte(0))){
                 maxReedemOfAllMarkets[key] = { amount: accountToken.supply_balance_underlying, method: 'redeem' };
             }
            
@@ -372,17 +372,20 @@ class LendSdk {
             if (new BigNumber(accountToken.supply_balance).gt(0)) suppliedMarkets++;
             if (new BigNumber(accountToken.borrow_balance_underlying).gt(0)) borrowedMarkets++;
 
-            if (new BigNumber(totalBorrowed).lte(0)) {
-                maxReedemOfAllMarkets[accountToken.token_address] = {amount: accountToken.supply_balance_underlying,method: 'redeem'};
-            } else {
-
-                if (!accountToken.is_entered) {
-                    // maxReedemOfAllMarkets[accountToken.token_address] = {amount:accountToken.supply_balance_underlying,method: 'redeem'};
-                } else {
-                    maxReedemOfAllMarkets[accountToken.token_address] = { amount: freeCollateral.div(market.underlying_price).div(market.collateral_factor).toString(10), method: 'redeemUnderlying' };
-                }
-
+            if (new BigNumber(totalBorrowed).gt(0) && accountToken.is_entered){
+                maxReedemOfAllMarkets[accountToken.token_address] = { amount: freeCollateral.div(market.underlying_price).div(market.collateral_factor).toString(10), method: 'redeemUnderlying' };
             }
+            // if (new BigNumber(totalBorrowed).gt(0) && accountToken.is_entered) {
+            //     // maxReedemOfAllMarkets[accountToken.token_address] = {amount: accountToken.supply_balance_underlying,method: 'redeem'};
+            // } else {
+
+            //     if (!accountToken.is_entered) {
+            //         // maxReedemOfAllMarkets[accountToken.token_address] = {amount:accountToken.supply_balance_underlying,method: 'redeem'};
+            //     } else {
+            //         maxReedemOfAllMarkets[accountToken.token_address] = { amount: freeCollateral.div(market.underlying_price).div(market.collateral_factor).toString(10), method: 'redeemUnderlying' };
+            //     }
+
+            // }
 
 
             if (new BigNumber(maxReedemOfAllMarkets[accountToken.token_address].amount).gte(accountToken.supply_balance_underlying)) {
