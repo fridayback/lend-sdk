@@ -320,7 +320,7 @@ class LendSdk {
 
         let {borrow}= this.totalInterestPerBlock(account,markets);
 
-        let borrowLimited = 0;
+        let borrowLimited = new BigNumber(0);
         if(new BigNumber(maxBorrow).gt(0)){
             borrowLimited = new BigNumber(totalBorrowed).plus(borrow).div(maxBorrow);
         }
