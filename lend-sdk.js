@@ -375,12 +375,20 @@ class LendSdk {
         let borrowedMarkets = 0;
 
         for (let index = 0; index < account.tokens.length; index++) {
-
             const accountToken = account.tokens[index];
             const market = markets[accountToken.token_address];
 
             if (new BigNumber(accountToken.supply_balance).gt(0)) suppliedMarkets++;
             if (new BigNumber(accountToken.borrow_balance_underlying).gt(0)) borrowedMarkets++;
+        }
+
+        for (let index = 0; index < account.tokens.length; index++) {
+
+            const accountToken = account.tokens[index];
+            const market = markets[accountToken.token_address];
+
+            // if (new BigNumber(accountToken.supply_balance).gt(0)) suppliedMarkets++;
+            // if (new BigNumber(accountToken.borrow_balance_underlying).gt(0)) borrowedMarkets++;
 
             if (new BigNumber(totalBorrowed).gt(0) && accountToken.is_entered && market.collateral_factor*1>0){
                 maxReedemOfAllMarkets[accountToken.token_address] = { amount: freeCollateral.div(market.underlying_price).div(market.collateral_factor).toString(10), method: 'redeemUnderlying' };
