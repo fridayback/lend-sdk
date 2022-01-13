@@ -421,7 +421,7 @@ class LendSdk {
         }
 
         for (const key in maxReedemOfAllMarkets) {
-            maxReedemOfAllMarkets[key].amount = new BigNumber(maxReedemOfAllMarkets[key].amount).toFormat(markets[key].underlying_decimals,BigNumber.ROUND_FLOOR);
+            maxReedemOfAllMarkets[key].amount = new BigNumber(maxReedemOfAllMarkets[key].amount).toFixed(markets[key].underlying_decimals,BigNumber.ROUND_FLOOR);
         }
         return maxReedemOfAllMarkets;
     }
