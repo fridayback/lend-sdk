@@ -426,6 +426,11 @@ class LendSdk {
                     maxReedemOfAllMarkets[accountToken.token_address].method = 'redeem';
                 }
             }
+
+            if(new BigNumber(maxReedemOfAllMarkets[accountToken.token_address].amount).gt(market.cash)){
+                maxReedemOfAllMarkets[accountToken.token_address].amount = market.cash;
+                maxReedemOfAllMarkets[accountToken.token_address].method = 'redeemUnderlying';
+            }
         }
 
         for (const key in maxReedemOfAllMarkets) {
