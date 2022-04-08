@@ -4,7 +4,10 @@ const BigNumber = require('bignumber.js');
 
 const MAX_MULTI_SIZE = 20;
 const BLOCKS_PER_YEAR = 2628000;
+// var Web3 = require('web3');
+const HELPER_ABI = require('./CompoundLens.json');
 
+// console.log('########\n',HELPER_ABI);
 
 class LendSdk {
     constructor(config, web3provider) {
@@ -29,6 +32,10 @@ class LendSdk {
         this.web3provider = web3provider;
 
         this.markets = {};
+
+        this.helper = config.helper;
+        this.CompoundLens = new this.web3provider.eth.Contract(HELPER_ABI, config.helper);
+        console.log('########\n', this.helper);
     }
 
     // async init(){
@@ -37,6 +44,46 @@ class LendSdk {
 
     // switchNetWork()
 
+    async getCompSeeds(markets) {
+        let speeds = [];
+        // let calls = [];
+        // let speeds = [];
+        // let call = {
+        //     target: this.helper,
+        //     call: ['getCompSpeedsAll(address[])((address,uint256,uint256)[])', markets],
+        //     returns: [
+        //         [
+        //            'speeds',
+        //             val => {
+        //                 val.forEach(speedsInfo=>{
+        //                     const market = speedsInfo.market;
+        //                     const compSupplySpeed = new BigNumber(speedsInfo.compSupplySpeed).shiftedBy(-18).toString(10);//
+        //                     const compBorrowSpeed = new BigNumber(compSupplySpeed.compBorrowSpeed).shiftedBy(-18).toString(10);//
+        //                     speeds.push({market,compSupplySpeed,compBorrowSpeed});
+        //                 })
+        //             },
+        //         ],
+        //     ],
+        // };
+
+        // calls.push(call);
+
+        // await aggregate(calls, {
+        //     multicallAddress: this.multiCallAddr,
+        //     web3: this.web3provider,
+        // });
+        let ret = await this.CompoundLens.methods.getCompSpeedsAll(markets).call();
+
+        ret.forEach(speedsInfo => {
+            const market = speedsInfo.market;
+            const compSupplySpeed = new BigNumber(speedsInfo.compSupplySpeed).shiftedBy(-18).toString(10);//
+            const compBorrowSpeed = new BigNumber(speedsInfo.compBorrowSpeed).shiftedBy(-18).toString(10);//
+            speeds.push({ market, compSupplySpeed, compBorrowSpeed });
+        })
+
+        return speeds;
+    }
+
     async getAllMarket() {
         let data = await this.apiService.getMarkets();
         let markets = {};
@@ -44,6 +91,8 @@ class LendSdk {
             const market = data[index];
             markets[market.token_address] = market;
         }
+
+        let marketAddrLs = [];
 
         for (const key in markets) {
             let market = markets[key];
@@ -55,9 +104,56 @@ class LendSdk {
             } else {
                 market.utilization = 0;
             }
+            marketAddrLs.push(key);
+        }
+
+        const speeds = await this.getCompSeeds(marketAddrLs);
+        for (let index = 0; index < speeds.length; index++) {
+            const element = speeds[index];
+            markets[element.market.toLowerCase()].compSupplySpeed = element.compSupplySpeed;
+            markets[element.market.toLowerCase()].compBorrowSpeed = element.compBorrowSpeed;
         }
 
         return markets;
+    }
+
+    async getRewards(user, tokens) {
+        let calls = [];
+        let rewards = 0;
+        let call = {
+            target: this.helper,
+            call: ['getRewardAll(address,address[])(uint)', user, tokens],
+            returns: [
+                [
+                    'reward',
+                    val => {
+                        rewards = new BigNumber(rewards).plus(val).toString(10);
+                    },
+                ],
+            ],
+        };
+
+        calls.push(call);
+
+        calls.push({
+            target: this.Unitroller,
+            call: ['compAccrued(address)(uint)', user],
+            returns: [
+                [
+                    'compAccrued',
+                    val => {
+                        rewards = new BigNumber(rewards).plus(val).toString(10);
+                    },
+                ],
+            ],
+        })
+
+        await aggregate(calls, {
+            multicallAddress: this.multiCallAddr,
+            web3: this.web3provider,
+        });
+
+        return rewards;
     }
 
     async getAccountInfo(accountAddr) {
@@ -66,6 +162,12 @@ class LendSdk {
         let account;
         if (data.length > 0) {
             account = data[0];
+            let tokens = [];
+            for (let index = 0; index < account.tokens.length; index++) {
+                const element = account.tokens[index];
+                tokens.push(element.token_address);
+            }
+            account.comp_reward = await this.getRewards(accountAddr, tokens);
         } else {
             return {
                 "address": accountAddr,
@@ -91,22 +193,65 @@ class LendSdk {
         let ret = await Promise.all(p);
         let markets = ret[0];
         let account = ret[1];
-        // for (let index = 0; index < account.tokens.length; index++) {
-        //     let accountToken = account[index];
-        //     accountToken.market = markets[accountToken.token_address];
-        // }
-        // for (const key in markets) {
-        //     let market = markets[key];
-        //     if (new BigNumber(market.cash).plus(market.total_borrows).minus(market.reserves).gt(0)) {
-        //         market.utilization = new BigNumber(market.total_borrows)
-        //             .div(new BigNumber(market.cash)
-        //                 .plus(market.total_borrows)
-        //                 .minus(market.reserves)).toNumber();
-        //     }else{
-        //         market.utilization = 0;
-        //     }
-        // }
+
         return { markets, account };
+    }
+
+    async getCompoundData2(accountAddr, finnPrice) {
+        let { markets, account } = await this.getCompoundData(accountAddr);
+        for (const marketAddr in markets) {
+            let market = markets[marketAddr];
+            let supplyValue = new BigNumber(market.total_supply).times(market.exchange_rate).times(market.underlying_price);
+            let borrowValue = new BigNumber(market.total_borrows).times(market.underlying_price);
+            let rewardSupplyValue = new BigNumber(market.compSupplySpeed).times(finnPrice).times(BLOCKS_PER_YEAR);
+            let rewardBorrowValue = new BigNumber(market.compBorrowSpeed).times(finnPrice).times(BLOCKS_PER_YEAR);
+            market.borrow_rate = new BigNumber(market.borrow_rate).times(-1).toString(10);
+            if(borrowValue.gt(0)){
+                market.borrow_rate_with_reward = new BigNumber(borrowValue).times(market.borrow_rate).plus(rewardBorrowValue).div(borrowValue).toString(10);
+            }else{
+                market.borrow_rate_with_reward = market.borrow_rate;
+            }
+            if(supplyValue.gt(0)){
+                market.supply_rate_with_reward = new BigNumber(supplyValue).times(market.supply_rate).plus(rewardSupplyValue).div(supplyValue).toString(10);
+                market.supply_rate_with_reward = market.supply_rate;
+            }
+            
+        }
+
+        let netIncome = 0;
+        let incomeFromReward = 0;
+        let totalSupplyValue = 0;
+        for (let index = 0; index < account.tokens.length; index++) {
+            const token = account.tokens[index];
+            netIncome = new BigNumber(token.supply_balance_underlying)
+                .times(markets[token.token_address].supply_rate)
+                .times(markets[token.token_address].underlying_price).plus(netIncome);
+
+            netIncome = new BigNumber(token.borrow_balance_underlying)
+                .times(markets[token.token_address].borrow_rate)
+                .times(markets[token.token_address].underlying_price).plus(netIncome);
+
+            if (new BigNumber(markets[token.token_address].total_borrows).gt(0)) {
+                incomeFromReward = new BigNumber(token.borrow_balance_underlying)
+                    .times(markets[token.token_address].compBorrowSpeed).times(BLOCKS_PER_YEAR)
+                    .times(finnPrice).div(markets[token.token_address].total_borrows).plus(incomeFromReward);
+            }
+
+            if (new BigNumber(markets[token.token_address].supply_balance).gt(0)) {
+                incomeFromReward = new BigNumber(token.supply_balance)
+                    .times(markets[token.token_address].compSupplySpeed).times(BLOCKS_PER_YEAR)
+                    .times(finnPrice).div(markets[token.token_address].total_supply).plus(incomeFromReward);
+            }
+
+
+            totalSupplyValue = new BigNumber(token.supply_balance_underlying)
+                .times(markets[token.token_address].underlying_price).plus(totalSupplyValue);
+
+        }
+        account.netAPY = new BigNumber(netIncome).div(totalSupplyValue).toString(10);
+        account.netAPY_with_reward = new BigNumber(netIncome).plus(incomeFromReward).div(totalSupplyValue).toString(10);
+
+        return {markets, account}
     }
 
     async _getMultiAuthorized(account, markets) {
@@ -164,6 +309,7 @@ class LendSdk {
 
     // params format like this:[{token, owner, spender}]
     async _getMultiTokenAllowance(params) {
+
         let calls = [];
         let ret = [];
         params.forEach(arg => {
@@ -427,7 +573,7 @@ class LendSdk {
                 }
             }
 
-            if(new BigNumber(maxReedemOfAllMarkets[accountToken.token_address].amount).gt(market.cash)){
+            if (new BigNumber(maxReedemOfAllMarkets[accountToken.token_address].amount).gt(market.cash)) {
                 maxReedemOfAllMarkets[accountToken.token_address].amount = market.cash;
                 maxReedemOfAllMarkets[accountToken.token_address].method = 'redeemUnderlying';
             }
