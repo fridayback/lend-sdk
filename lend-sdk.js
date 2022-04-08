@@ -153,7 +153,7 @@ class LendSdk {
             web3: this.web3provider,
         });
 
-        return rewards;
+        return new BigNumber(rewards).shiftedBy(-18).toString(10);
     }
 
     async getAccountInfo(accountAddr) {
