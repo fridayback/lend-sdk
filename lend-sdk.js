@@ -250,6 +250,7 @@ class LendSdk {
         }
         account.netAPY = new BigNumber(netIncome).div(totalSupplyValue).toString(10);
         account.netAPY_with_reward = new BigNumber(netIncome).plus(incomeFromReward).div(totalSupplyValue).toString(10);
+        account.rewardPerWeek = new BigNumber(incomeFromReward).times(7).div(BLOCKS_PER_YEAR).toString(10);
 
         return {markets, account}
     }
