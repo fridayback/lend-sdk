@@ -213,6 +213,7 @@ class LendSdk {
             }
             if(supplyValue.gt(0)){
                 market.supply_rate_with_reward = new BigNumber(supplyValue).times(market.supply_rate).plus(rewardSupplyValue).div(supplyValue).toString(10);
+            }else{
                 market.supply_rate_with_reward = market.supply_rate;
             }
             
