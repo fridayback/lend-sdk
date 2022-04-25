@@ -249,8 +249,14 @@ class LendSdk {
                 .times(markets[token.token_address].underlying_price).plus(totalSupplyValue);
 
         }
-        account.netAPY = new BigNumber(netIncome).div(totalSupplyValue).toString(10);
-        account.netAPY_with_reward = new BigNumber(netIncome).plus(incomeFromReward).div(totalSupplyValue).toString(10);
+
+        account.netAPY = "0";
+        account.netAPY_with_reward = "0";
+        if(new BigNumber(totalSupplyValue).gt(0)){
+            account.netAPY = new BigNumber(netIncome).div(totalSupplyValue).toString(10);
+            account.netAPY_with_reward = new BigNumber(netIncome).plus(incomeFromReward).div(totalSupplyValue).toString(10);
+        }
+        
         account.rewardPerWeek = new BigNumber(incomeFromReward).times(7).div(BLOCKS_PER_YEAR).toString(10);
 
         return {markets, account}
