@@ -238,7 +238,7 @@ class LendSdk {
                     .times(finnPrice).div(markets[token.token_address].total_borrows).plus(incomeFromReward);
             }
 
-            if (new BigNumber(markets[token.token_address].supply_balance).gt(0)) {
+            if (new BigNumber(markets[token.token_address].total_supply).gt(0)) {
                 incomeFromReward = new BigNumber(token.supply_balance)
                     .times(markets[token.token_address].compSupplySpeed).times(BLOCKS_PER_YEAR)
                     .times(finnPrice).div(markets[token.token_address].total_supply).plus(incomeFromReward);
